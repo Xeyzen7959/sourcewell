@@ -1,0 +1,23 @@
+services:
+  sourcewell:
+    build: .
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GENERATION_MODEL: ${GENERATION_MODEL:-gpt-6-luna}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-text-embedding-3-small}
+      APP_MODE: ${APP_MODE:-local}
+      ADMIN_TOKEN: ${ADMIN_TOKEN:-}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      DAILY_PROVIDER_CALL_LIMIT: ${DAILY_PROVIDER_CALL_LIMIT:-100}
+      REQUESTS_PER_MINUTE: ${REQUESTS_PER_MINUTE:-20}
+      GENERATION_INPUT_PRICE: ${GENERATION_INPUT_PRICE:-}
+      GENERATION_OUTPUT_PRICE: ${GENERATION_OUTPUT_PRICE:-}
+      EMBEDDING_INPUT_PRICE: ${EMBEDDING_INPUT_PRICE:-}
+      DATA_DIR: /app/data
+    volumes:
+      - sourcewell-data:/app/data
+    restart: unless-stopped
+volumes:
+  sourcewell-data:

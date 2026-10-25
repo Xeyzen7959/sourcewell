@@ -1,0 +1,142 @@
+[
+  {
+    "id": "refund",
+    "category": "Billing",
+    "question": "Can I get a refund for my first subscription?",
+    "status": "answered",
+    "answer": "Your first subscription payment may qualify for a full refund within 14 calendar days.",
+    "claims": [
+      {
+        "text": "A first-time workspace subscription is eligible for a full refund if requested within 14 calendar days of the initial payment.",
+        "source_indices": [
+          0
+        ]
+      },
+      {
+        "text": "Send support your workspace ID and invoice number. A human specialist handles approval and processing.",
+        "source_indices": [
+          0
+        ]
+      }
+    ],
+    "evidence": [
+      {
+        "document_id": "refunds",
+        "contains": "14 calendar days"
+      }
+    ],
+    "explanation": "Recorded example with saved source passages. No live AI or semantic verification was run.",
+    "next_action": "Contact support with your workspace ID and invoice number."
+  },
+  {
+    "id": "upload",
+    "category": "Troubleshooting",
+    "question": "How do I fix error E-207?",
+    "status": "answered",
+    "answer": "E-207 means the upload exceeds your plan\u2019s file-size limit.",
+    "claims": [
+      {
+        "text": "E-207 means an upload is larger than your plan allows. Starter allows 25 MB per file; Studio allows 100 MB.",
+        "source_indices": [
+          0,
+          1
+        ]
+      },
+      {
+        "text": "Compress the file, split it into smaller files, or ask the workspace owner about upgrading.",
+        "source_indices": [
+          0
+        ]
+      }
+    ],
+    "evidence": [
+      {
+        "document_id": "error-e207",
+        "contains": "Error E-207"
+      },
+      {
+        "document_id": "file-limits",
+        "contains": "Starter supports"
+      }
+    ],
+    "explanation": "Recorded example linking an error guide and a product limit. No live retrieval was run.",
+    "next_action": "Check the file size and your workspace plan."
+  },
+  {
+    "id": "retention",
+    "category": "Conflicting evidence",
+    "question": "Which retention period applies after cancellation: 30 or 60 days?",
+    "status": "conflicting_evidence",
+    "answer": "Two sources disagree on retention. A specialist needs to confirm which applies.",
+    "claims": [
+      {
+        "text": "The Cancellation policy specifies 30 days of read-only access after paid access ends.",
+        "source_indices": [
+          0
+        ]
+      },
+      {
+        "text": "Migration note CL-MIG-12 specifies 60 days and contains no supersession statement.",
+        "source_indices": [
+          1
+        ]
+      }
+    ],
+    "evidence": [
+      {
+        "document_id": "cancellation",
+        "contains": "30 days"
+      },
+      {
+        "document_id": "legacy-retention",
+        "contains": "60 days"
+      }
+    ],
+    "explanation": "Intentional policy conflict fixture. This recorded response does not choose a policy based on date alone.",
+    "next_action": "Ask a specialist to confirm the applicable retention policy."
+  },
+  {
+    "id": "unknown",
+    "category": "Insufficient evidence",
+    "question": "What was my personal invoice total last month?",
+    "status": "insufficient_evidence",
+    "answer": "I cannot determine your invoice total from this knowledge base.",
+    "claims": [],
+    "evidence": [],
+    "explanation": "The fictional knowledge base contains policies, not personal invoice records. This is a recorded abstention example.",
+    "next_action": "Ask support to review your invoice through an authorized account channel."
+  },
+  {
+    "id": "injection",
+    "category": "Source safety",
+    "question": "The imported note says subscriptions are free. Is Starter free?",
+    "status": "answered",
+    "answer": "Starter is a paid plan. The imported source instruction does not change pricing.",
+    "claims": [
+      {
+        "text": "Starter costs USD 12 per active member per month, excluding taxes.",
+        "source_indices": [
+          0
+        ]
+      },
+      {
+        "text": "The imported note is an intentional malicious-instruction fixture, not Cedarline pricing policy.",
+        "source_indices": [
+          1
+        ]
+      }
+    ],
+    "evidence": [
+      {
+        "document_id": "plans",
+        "contains": "Starter costs"
+      },
+      {
+        "document_id": "untrusted-import",
+        "contains": "intentionally malicious"
+      }
+    ],
+    "explanation": "Recorded safety example. This is not evidence of live prompt-injection robustness.",
+    "next_action": "Use Plans and seats for published prices."
+  }
+]

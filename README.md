@@ -1,0 +1,203 @@
+<div align="center">
+
+# Sourcewell.
+
+**Support answers with evidence you can inspect.**
+
+React + TypeScript · FastAPI · Chroma · BM25 · Reciprocal Rank Fusion
+
+[![Sourcewell checks](https://github.com/Xeyzen7959/sourcewell/actions/workflows/checks.yml/badge.svg)](https://github.com/Xeyzen7959/sourcewell/actions/workflows/checks.yml)
+
+[Get started](#get-started) · [Architecture](#how-it-works) · [Evaluation](evaluation/README.md) · [Learning guide](docs/LEARNING.md)
+
+</div>
+
+![Sourcewell workspace showing recorded scenarios and its evidence-first support interface](docs/screenshots/workspace.png)
+
+Sourcewell is a working portfolio application for answering support questions from company documentation. It connects document ingestion, hybrid retrieval, structured generation, inspectable citations, and human handoff in one small application.
+
+The sample company, **Cedarline Cloud**, and all 24 seeded documents are fictional. One conflicting policy pair and one malicious source instruction are deliberate evaluation fixtures.
+
+## What you can explore
+
+- **Ask:** select a recorded scenario, or use live AI after server configuration. Open the exact passages behind each citation.
+- **Knowledge:** search and preview source documents. Authorized local administrators can upload, replace, index, and delete their own documents.
+- **Inbox:** save a handoff with its answer attempt and source snapshots. Review notes, draft a reply, and update status. Tickets persist in SQLite and belong to the current browser session.
+- **Evaluation lab:** inspect 60 draft cases and their development/held-out splits. View actual evaluator artifacts when available; no scores appear before a live run.
+
+Recorded examples are explicitly labeled. They do not run retrieval or AI, and failed live requests never silently become saved examples.
+
+## Get started
+
+### Docker Compose
+
+Requires Docker with Compose. From the repository root:
+
+```bash
+cp .env.example .env
+docker compose up --build
+```
+
+Open **http://localhost:8000**. Recorded examples work without a provider key. Application data persists in the named `sourcewell-data` volume. The published port binds to loopback only.
+
+### Without Docker
+
+Requires Python 3.12, [uv](https://docs.astral.sh/uv/), Node.js 24, and pnpm 11.25.0.
+
+```bash
+cp .env.example .env
+uv sync --frozen --extra dev
+cd frontend
+pnpm install --frozen-lockfile
+pnpm build
+cd ..
+uv run python -m uvicorn backend.main:create_app --factory --host 127.0.0.1 --port 8000 --no-access-log
+```
+
+Open **http://127.0.0.1:8000**. FastAPI serves the built frontend and API on the same origin. The fictional corpus is seeded at startup without external calls.
+
+For frontend development, keep the API running on port 8000 and run `pnpm dev` inside `frontend/`. Vite proxies `/api` to the local server. Rebuild before testing the production interface.
+
+## Enable real AI
+
+1. Set `OPENAI_API_KEY` on the server in `.env`. ChatGPT/Codex access does not itself supply an API key or API credits.
+2. Set a strong `ADMIN_TOKEN` for local document administration. For example, generate one with `python -c "import secrets; print(secrets.token_urlsafe(32))"`. Never commit the generated value.
+3. Restart the server. In Knowledge, choose **Administrator access**, enter the token, and choose **Index all for live search**. Alternatively run the index command below.
+4. In Ask, switch to **Live AI**. Choose semantic or hybrid retrieval and ask your own question.
+
+```bash
+# Real embedding calls; requires a provider key.
+uv run python -m scripts.manage index
+
+# Explicit paid-provider check; no mocks or fixture substitution.
+uv run python -m scripts.live_smoke
+```
+
+Docker equivalents: `docker compose exec sourcewell /app/.venv/bin/python -m scripts.manage index` and `docker compose exec sourcewell /app/.venv/bin/python -m scripts.live_smoke`.
+
+Default models are configurable: `gpt-6-luna` for generation/support assessment and `text-embedding-3-small` for embeddings. Account access and model compatibility must be verified with your own live smoke check. Changing embedding models creates a separate vector collection and requires indexing again.
+
+### Provider limits and cost
+
+The default global cap is **100 reserved provider operations per UTC day**, persisted in SQLite. One normal answer can use three operations: query embedding, generation, and citation assessment. Initial indexing uses additional operations. Failed calls also consume reservations; automatic provider retries are disabled. Calls use a 35-second timeout and generation is capped at 4,000 output tokens per operation.
+
+The cap is an application safeguard, **not a guaranteed dollar budget**. Configure provider-side spending controls too. Optional per-million-token prices enable estimated response costs. Blank prices display “unavailable,” never zero. Estimates exclude unknown usage from failed calls and are not billing records.
+
+## How it works
+
+```mermaid
+flowchart LR
+    D[Markdown / text / text PDF] --> C[Structure-aware chunks + source metadata]
+    C --> S[(SQLite active corpus)]
+    C --> V[(Chroma embeddings)]
+    S --> B[BM25 keyword ranking]
+    Q[Question] --> E[Query embedding]
+    Q --> B
+    E --> V
+    V --> R[Reciprocal Rank Fusion]
+    B --> R
+    R --> G[Structured answer + cited claims]
+    G --> I[Citation ID validation]
+    I --> J[Separate model support assessment]
+    J --> A[Inspectable answer or abstention]
+    A --> H[Session-owned handoff + evidence snapshot]
+```
+
+Semantic mode skips BM25 fusion. Hybrid mode combines ranks rather than mixing incompatible similarity and keyword scores. The final context size and candidate count are configurable.
+
+Only active SQLite chunk IDs are eligible for vector retrieval. A replacement changes the active chunks atomically; old vectors cannot become search results even if cleanup is interrupted. Saved answers intentionally retain historical evidence snapshots. See [architecture decisions](docs/ARCHITECTURE.md).
+
+![An actual recorded answer showing clickable evidence and a specialist handoff](docs/screenshots/answer-desktop.png)
+
+## Quality and evaluation
+
+**No live AI quality benchmark has been run for this initial build.** The build environment had no OpenAI API key. Offline tests verify behavior using deterministic doubles; they are not evidence of real model accuracy.
+
+The 60-case dataset is **AI-drafted and requires human review**. It is not human-labeled ground truth. Development and held-out cases are kept separate. Read [the evaluation protocol](evaluation/README.md) before making portfolio quality claims.
+
+```bash
+# Start with a small paid smoke comparison.
+uv run python -m scripts.evaluate --split development --limit 2
+
+# A full run may require raising DAILY_PROVIDER_CALL_LIMIT deliberately.
+uv run python -m scripts.evaluate --split development
+
+# Final assessment only; do not tune on this split.
+uv run python -m scripts.evaluate --split held_out --confirm-held-out
+```
+
+The evaluator uses an isolated seed-only index under `data/evaluation`, so uploaded local documents do not contaminate the comparison or its exported answers. Its provider reservations still count toward the application's shared daily cap. It records dataset/corpus fingerprints, models, settings, time, failures, document-level Recall@k, citation-reference checks, model support assessments, abstention, tokens, and optional cost estimates. Answer correctness requires a separate human rubric review. It does not infer correctness from a model’s confidence.
+
+## Run the checks
+
+```bash
+uv run ruff check backend scripts
+uv run python -m pytest -q
+cd frontend
+pnpm typecheck
+pnpm lint
+pnpm build
+pnpm exec playwright install chromium
+pnpm test:e2e
+```
+
+Playwright runs the built app against a real temporary FastAPI/SQLite server on port 8001, without a provider key. It checks desktop and mobile answer/citation/handoff flows, persisted ticket edits, document administration, and honest evaluation states. On Linux, install browser dependencies with `pnpm exec playwright install --with-deps chromium`.
+
+To refresh application screenshots deliberately: `UPDATE_SCREENSHOTS=1 pnpm test:e2e`. GitHub Actions runs deterministic checks without paid calls or secrets.
+
+## Data, access, and deployment limits
+
+- Local mode is intended for a developer using a loopback server. Uploaded documents are workspace-wide, not user-private. Administrative writes require the server-side token.
+- `APP_MODE=public` disables document mutations and excludes uploaded documents from all public document/search endpoints. Seed documents remain read-only in either mode.
+- Tickets and answers use a random 256-bit HttpOnly session cookie. This provides browser-session isolation, not user accounts or durable identity. Clearing cookies loses access to that session’s tickets. No shared public inbox is exposed.
+- Source content renders as text; it cannot inject HTML. Document instructions are passed as untrusted evidence, with no model tools or external actions. Prompt-injection robustness still needs live/adversarial evaluation.
+- Uploads accept UTF-8 Markdown/text and unencrypted text PDFs, at most 2 MB and 50 PDF pages by default. Scanned PDFs require OCR, which is not included.
+- The application uses one server process and a local vector store. In-memory per-IP rate limits are not distributed. A public deployment requires HTTPS, `COOKIE_SECURE=true`, a carefully configured trusted proxy, provider budget controls, and a review of operating limits. No deployment is included.
+- Session data has no automatic expiry cleanup in SQLite. Remove it using the documented local reset or add retention before ongoing public operation.
+
+### Seed and reset
+
+```bash
+# Idempotent fictional seed; does not delete local uploads or call AI.
+uv run python -m scripts.manage seed
+
+# Destructive: stop the server and back up ./data first.
+uv run python -m scripts.manage reset --confirm DELETE_LOCAL_SOURCEWELL_DATA
+```
+
+Reset refuses custom DATA_DIR locations. Docker data lives in its named volume; back it up before any manual volume removal. Do not run reset while the application is using the database.
+
+## Configuration
+
+| Variable | Default / purpose |
+| --- | --- |
+| `OPENAI_API_KEY` | Empty; recorded examples remain available |
+| `GENERATION_MODEL` | `gpt-6-luna`; structured generation and support checks |
+| `EMBEDDING_MODEL` | `text-embedding-3-small` |
+| `DATA_DIR` | `./data`; ignored local databases and vectors |
+| `APP_MODE` | `local`; `public` restricts access to fictional seed documents |
+| `ADMIN_TOKEN` | Empty; document administration disabled until configured |
+| `COOKIE_SECURE` | `false` for loopback HTTP; use `true` with public HTTPS |
+| `DAILY_PROVIDER_CALL_LIMIT` | `100`; persisted cap, including failed reservations |
+| `REQUESTS_PER_MINUTE` | `20`; per client IP per application process |
+| `MAX_UPLOAD_BYTES` | `2000000` |
+| `CHUNK_SIZE` / `CHUNK_OVERLAP` | `1200` / `150` characters; overlap must be smaller |
+| `RETRIEVAL_CANDIDATES` / `CONTEXT_CHUNKS` | `10` / `5` |
+| `RRF_K` | `60` rank-fusion constant |
+| `GENERATION_INPUT_PRICE` / `GENERATION_OUTPUT_PRICE` | Optional USD per million tokens |
+| `EMBEDDING_INPUT_PRICE` | Optional USD per million input tokens |
+
+Advanced variables are read directly by the non-Docker server. Add them to Compose’s environment mapping if overriding them in Docker.
+
+## Project map
+
+```text
+backend/       API, access rules, retrieval, provider integration, persistence, tests
+frontend/      Accessible React workspace and browser tests
+fixtures/      Fictional documents and explicitly recorded examples
+evaluation/    Draft questions, review protocol, and optional real result artifact
+scripts/       Seed, index, reset, live smoke, and live comparison commands
+docs/          Architecture decisions, learning guide, demo script, screenshots
+```
+
+Built by [@Xeyzen7959](https://github.com/Xeyzen7959).
