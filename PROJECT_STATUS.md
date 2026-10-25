@@ -7,7 +7,8 @@ Ship the working local Sourcewell application and push it to Xeyzen7959/sourcewe
 - [x] Ingestion, retrieval, structured generation, and citation validation.
 - [x] Connected Ask, Knowledge, Inbox, and Evaluation screens.
 - [x] Offline tests, live smoke-test entry point, documentation, and screenshots.
-- [ ] Commit, push, verify remote commit and GitHub Actions.
+- [x] Commit, push, and verify the remote main branch.
+- GitHub Actions runs on each push; the delivery message reports the latest observed run status.
 
 ## Constraints
 No OpenAI API key is configured in this build environment. Live calls and real semantic/hybrid benchmark results remain unverified until a key is supplied. Recorded examples and deterministic tests must stay explicitly labeled.
