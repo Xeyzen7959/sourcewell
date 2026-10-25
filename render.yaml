@@ -1,0 +1,41 @@
+# Preparation only. Applying this Blueprint creates paid resources and requires owner approval.
+services:
+  - type: web
+    name: sourcewell
+    runtime: docker
+    plan: 1c-2g
+    numInstances: 1
+    region: singapore
+    autoDeploy: false
+    healthCheckPath: /api/ready
+    disk:
+      name: sourcewell-data
+      mountPath: /app/data
+      sizeGB: 1
+    envVars:
+      - key: APP_MODE
+        value: public
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: DATA_DIR
+        value: /app/data
+      - key: PORT
+        value: "8000"
+      - key: FORWARDED_ALLOW_IPS
+        value: "*"
+      - key: AI_PROVIDER
+        value: vercel
+      - key: GENERATION_MODEL
+        value: google/gemini-2.5-flash-lite
+      - key: EMBEDDING_MODEL
+        value: openai/text-embedding-3-small
+      - key: AI_GATEWAY_API_KEY
+        sync: false
+      - key: DAILY_PROVIDER_CALL_LIMIT
+        value: "100"
+      - key: REQUESTS_PER_MINUTE
+        value: "12"
+      - key: MAX_CONCURRENT_LIVE_REQUESTS
+        value: "2"
+      - key: SESSION_RETENTION_HOURS
+        value: "24"

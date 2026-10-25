@@ -1,4 +1,4 @@
-export type Page = "ask" | "knowledge" | "inbox" | "evaluation";
+export type Page = "intro" | "ask" | "knowledge" | "inbox" | "evaluation";
 export type Status =
   | "answered"
   | "insufficient_evidence"
@@ -46,6 +46,10 @@ export type Config = {
   generation_model: string;
   embedding_model: string;
   max_upload_bytes: number;
+  live_status: "missing_credentials" | "budget_exhausted" | "available";
+  provider: "openai" | "vercel";
+  credential_name: string;
+  session_retention_hours: number | null;
   examples: { id: string; question: string; category: string }[];
 };
 export type Document = {
@@ -78,6 +82,9 @@ export type EvalCase = {
   relevant_documents: string[];
   expected_behavior: string;
   review_status: string;
+  reviewer?: string;
+  reviewed_at?: string;
+  review_note?: string;
 };
 export type EvalRow = {
   id: string;
@@ -89,6 +96,15 @@ export type EvalRow = {
   model_support_pass: boolean | null;
   latency_ms: number;
   error?: string;
+  question: string;
+  answer?: string;
+  expected_behavior: string;
+  source_passages?: {
+    id: string;
+    document_id: string;
+    section: string;
+    text: string;
+  }[];
 };
 export type EvalResult = {
   status: string;
@@ -108,8 +124,30 @@ export type EvalResult = {
     model_support_pass_rate: number | null;
     average_latency_ms: number;
     estimated_cost_usd: number | null;
+    error_count: number;
+    retrieval_case_count: number;
+    retrieval_success_count: number;
+    citation_reference_count: number;
+    valid_citation_reference_count: number;
+    incorrect_abstention_rate: number | null;
+    answerable_case_count: number;
+    abstention_case_count: number;
+    conflict_handling_rate: number | null;
+    conflict_case_count: number;
+    status_match_rate: number | null;
+    median_latency_ms: number | null;
+    p95_latency_ms: number | null;
+    input_tokens: number;
+    output_tokens: number;
+    unknown_usage_calls: number;
+    support_draft_count: number;
+    human_review_count: number;
+    human_mean_grade: number | null;
+    human_pass_rate: number | null;
   }[];
   cases?: EvalRow[];
+  run_fingerprint?: string;
+  dataset_review_status?: string;
 };
 export type Evaluation = {
   dataset_version: string;
@@ -119,4 +157,5 @@ export type Evaluation = {
   held_out_count: number;
   cases: EvalCase[];
   results: EvalResult | null;
+  reviewed_count: number;
 };

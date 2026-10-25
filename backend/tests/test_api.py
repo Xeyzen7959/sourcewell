@@ -86,8 +86,9 @@ def test_public_mode_excludes_uploaded_documents(settings):
     from backend.tests.conftest import FakeProvider
 
     settings.app_mode = "public"
+    settings.cookie_secure = True
     app = create_app(settings, FakeProvider)
-    with TestClient(app) as client:
+    with TestClient(app, base_url="https://testserver") as client:
         doc_id = app.state.retriever.ingest("private.txt", b"Private local document.")
         assert doc_id not in {d["id"] for d in client.get("/api/documents").json()}
         assert client.get(f"/api/documents/{doc_id}").status_code == 404

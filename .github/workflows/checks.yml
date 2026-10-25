@@ -42,3 +42,24 @@ jobs:
           name: browser-failure-artifacts
           path: frontend/test-results/
           retention-days: 7
+  container:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t sourcewell-ci .
+      - name: Start public demo without provider credentials
+        run: >-
+          docker run -d --name sourcewell-ci -p 127.0.0.1:8003:8000
+          -v sourcewell-ci-data:/app/data
+          -e APP_MODE=public -e COOKIE_SECURE=true -e PUBLIC_ORIGIN=https://sourcewell-ci.example
+          sourcewell-ci
+      - name: Verify container readiness and recorded mode
+        run: python scripts/check_container.py
+      - name: Container diagnostics
+        if: failure()
+        run: docker logs sourcewell-ci
+      - name: Stop test container
+        if: always()
+        run: docker rm -f sourcewell-ci

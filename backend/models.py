@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class Claim(BaseModel):
@@ -41,3 +41,24 @@ class TicketUpdate(BaseModel):
     status: Literal["open", "in_progress", "resolved"]
     note: str = Field(default="", max_length=2000)
     draft_reply: str = Field(default="", max_length=5000)
+
+
+class AnnotationReview(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+    question: str = Field(min_length=3, max_length=1200)
+    expected_behavior: str = Field(min_length=10, max_length=4000)
+    expected_status: Literal["answered", "insufficient_evidence", "conflicting_evidence"]
+    relevant_documents: list[str] = Field(max_length=24)
+    reviewer: str = Field(min_length=2, max_length=100)
+    note: str = Field(default="", max_length=1000)
+    attestation: Literal[True]
+
+
+class AnswerQualityReview(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+    run_fingerprint: str = Field(min_length=64, max_length=64)
+    mode: Literal["semantic", "hybrid"]
+    grade: int = Field(ge=0, le=4)
+    reviewer: str = Field(min_length=2, max_length=100)
+    reason: str = Field(min_length=10, max_length=2000)
+    attestation: Literal[True]

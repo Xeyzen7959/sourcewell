@@ -11,10 +11,24 @@ from backend.store import Store
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("operation", choices=["seed", "index", "reset"])
+    parser.add_argument("operation", choices=["seed", "index", "reset", "cleanup", "export-reviews"])
     parser.add_argument("--confirm", default="", help="Reset requires exactly DELETE_LOCAL_SOURCEWELL_DATA")
     args = parser.parse_args()
     settings = Settings()
+    if args.operation == "cleanup":
+        count = Store(settings.data_dir, settings.session_retention_hours).cleanup_sessions()
+        print(
+            f"Removed {count} expired public answers and their associated public tickets. Local history preserved."
+        )
+        return
+    if args.operation == "export-reviews":
+        from backend.evaluation import review_records
+        import json
+
+        destination = ROOT / "evaluation/reviews.json"
+        destination.write_text(json.dumps(review_records(settings), indent=2) + "\n")
+        print("Exported human-entered records to evaluation/reviews.json. Review the diff before committing.")
+        return
     if args.operation == "reset":
         if args.confirm != "DELETE_LOCAL_SOURCEWELL_DATA":
             parser.error("Stop the server, back up data, then pass --confirm DELETE_LOCAL_SOURCEWELL_DATA")

@@ -2,7 +2,7 @@ import json
 import sqlite3
 import uuid
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException
 
@@ -12,9 +12,10 @@ def now():
 
 
 class Store:
-    def __init__(self, directory):
+    def __init__(self, directory, retention_hours=None):
         directory.mkdir(parents=True, exist_ok=True)
         self.path = directory / "sourcewell.sqlite3"
+        self.retention_hours = retention_hours
         with self.db() as db:
             db.executescript("""
                 PRAGMA journal_mode=WAL;
@@ -29,7 +30,8 @@ class Store:
                     FOREIGN KEY(document_id) REFERENCES documents(id) ON DELETE CASCADE
                 );
                 CREATE TABLE IF NOT EXISTS answers (
-                    id TEXT PRIMARY KEY, owner TEXT NOT NULL, payload TEXT NOT NULL
+                    id TEXT PRIMARY KEY, owner TEXT NOT NULL, payload TEXT NOT NULL,
+                    created_at TEXT NOT NULL
                 );
                 CREATE TABLE IF NOT EXISTS tickets (
                     id TEXT PRIMARY KEY, owner TEXT NOT NULL, answer_id TEXT NOT NULL,
@@ -43,6 +45,33 @@ class Store:
                     model TEXT NOT NULL, estimated_cost REAL
                 );
             """)
+            columns = {row[1] for row in db.execute("PRAGMA table_info(answers)")}
+            if "created_at" not in columns:
+                db.execute("ALTER TABLE answers ADD COLUMN created_at TEXT")
+                db.execute("UPDATE answers SET created_at=? WHERE created_at IS NULL", (now(),))
+
+    def cutoff(self):
+        if self.retention_hours is None:
+            return ""
+        return (datetime.now(timezone.utc) - timedelta(hours=self.retention_hours)).isoformat()
+
+    def cleanup_sessions(self):
+        if self.retention_hours is None:
+            return 0
+        cutoff = self.cutoff()
+        with self.db() as db:
+            db.execute(
+                "DELETE FROM tickets WHERE owner LIKE 'public:%' AND "
+                "(created_at<? OR answer_id IN (SELECT id FROM answers WHERE created_at<?))",
+                (cutoff, cutoff),
+            )
+            result = db.execute("DELETE FROM answers WHERE owner LIKE 'public:%' AND created_at<?", (cutoff,))
+        return result.rowcount
+
+    def remaining_calls(self, limit):
+        with self.db() as db:
+            used = db.execute("SELECT count(*) FROM usage WHERE created_at>=?", (now()[:10],)).fetchone()[0]
+        return max(0, limit - used)
 
     @contextmanager
     def db(self):
@@ -116,13 +145,17 @@ class Store:
         answer_id = str(uuid.uuid4())
         payload["id"] = answer_id
         with self.db() as db:
-            db.execute("INSERT INTO answers VALUES (?,?,?)", (answer_id, owner, json.dumps(payload)))
+            db.execute(
+                "INSERT INTO answers (id,owner,payload,created_at) VALUES (?,?,?,?)",
+                (answer_id, owner, json.dumps(payload), now()),
+            )
         return payload
 
     def answer(self, owner, answer_id):
         with self.db() as db:
             row = db.execute(
-                "SELECT payload FROM answers WHERE id=? AND owner=?", (answer_id, owner)
+                "SELECT payload FROM answers WHERE id=? AND owner=? AND created_at>=?",
+                (answer_id, owner, self.cutoff() if owner.startswith("public:") else ""),
             ).fetchone()
         if not row:
             raise HTTPException(404, "Answer not found in this session")
@@ -131,7 +164,8 @@ class Store:
     def tickets(self, owner):
         with self.db() as db:
             rows = db.execute(
-                "SELECT * FROM tickets WHERE owner=? ORDER BY created_at DESC", (owner,)
+                "SELECT * FROM tickets WHERE owner=? AND created_at>=? ORDER BY created_at DESC",
+                (owner, self.cutoff() if owner.startswith("public:") else ""),
             ).fetchall()
         return [dict(r) for r in rows]
 
@@ -154,8 +188,15 @@ class Store:
     def update_ticket(self, owner, ticket_id, update):
         with self.db() as db:
             cursor = db.execute(
-                "UPDATE tickets SET status=?,note=?,draft_reply=? WHERE id=? AND owner=?",
-                (update.status, update.note, update.draft_reply, ticket_id, owner),
+                "UPDATE tickets SET status=?,note=?,draft_reply=? WHERE id=? AND owner=? AND created_at>=?",
+                (
+                    update.status,
+                    update.note,
+                    update.draft_reply,
+                    ticket_id,
+                    owner,
+                    self.cutoff() if owner.startswith("public:") else "",
+                ),
             )
         if cursor.rowcount == 0:
             raise HTTPException(404, "Ticket not found in this session")

@@ -14,6 +14,7 @@ import { Ask } from "./Ask";
 import { Knowledge } from "./Knowledge";
 import { Inbox } from "./Inbox";
 import { Evaluation } from "./Evaluation";
+import { Introduction } from "./Introduction";
 import { Modal, Notice, SourcePanel } from "./ui";
 import type { Config, Page, Source } from "./types";
 
@@ -25,7 +26,7 @@ const navigation = [
 ];
 function currentPage(): Page {
   const hash = window.location.hash.slice(1);
-  return navigation.some((n) => n.id === hash) ? (hash as Page) : "ask";
+  return navigation.some((n) => n.id === hash) ? (hash as Page) : "intro";
 }
 
 export default function App() {
@@ -59,6 +60,14 @@ export default function App() {
     setPage(next);
     setMenu(false);
   }
+  if (page === "intro" && config)
+    return (
+      <Introduction
+        config={config}
+        onDemo={() => go("ask")}
+        onEvaluation={() => go("evaluation")}
+      />
+    );
   return (
     <div className="app-shell">
       <a
@@ -75,7 +84,12 @@ export default function App() {
         className={`sidebar ${menu ? "open" : ""}`}
         aria-label="Workspace navigation"
       >
-        <a href="#ask" className="brand" onClick={() => go("ask")}>
+        <a
+          href="#intro"
+          className="brand"
+          onClick={() => go("intro")}
+          aria-label="Sourcewell introduction"
+        >
           <span className="brand-mark">s</span>
           <span>
             sourcewell<span className="brand-period">.</span>
@@ -184,7 +198,7 @@ export default function App() {
               {page === "inbox" && (
                 <Inbox onSource={setSource} onAsk={() => go("ask")} />
               )}
-              {page === "evaluation" && <Evaluation />}
+              {page === "evaluation" && <Evaluation config={config} />}
             </>
           )}
         </main>

@@ -15,7 +15,7 @@ test("recorded answer, exact source, handoff, and persisted specialist review", 
 }, testInfo) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
-  await page.goto("/");
+  await page.goto("/#ask");
   await expect(
     page.getByRole("heading", { name: /Good answers start/ }),
   ).toBeVisible();
@@ -96,7 +96,7 @@ test("recorded answer, exact source, handoff, and persisted specialist review", 
 test("knowledge search, preview, administration, and honest evaluation state", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/#ask");
   await navigate(page, "Knowledge");
   await page.getByRole("textbox", { name: "Search documents" }).fill("refund");
   await expect(page.locator(".document-row")).toHaveCount(1);
@@ -148,7 +148,7 @@ test("knowledge search, preview, administration, and honest evaluation state", a
 test("conflicting evidence and missing personal data remain explicit", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/#ask");
   await page
     .getByLabel("Support question")
     .selectOption(

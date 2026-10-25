@@ -33,6 +33,7 @@ export function Ask({
     "Please review this answer and the supporting evidence.",
   );
   const [saved, setSaved] = useState(false);
+  const [availability, setAvailability] = useState(config);
   async function ask(value = question) {
     setBusy(true);
     setError("");
@@ -48,6 +49,11 @@ export function Ask({
       );
     } catch (error) {
       setError((error as Error).message);
+      try {
+        setAvailability(await api<Config>("/config"));
+      } catch {
+        /* Keep the original request error visible. */
+      }
     } finally {
       setBusy(false);
     }
@@ -86,17 +92,20 @@ export function Ask({
                 setMode("recorded");
                 setQuestion(config.examples[0].question);
                 setAnswer(null);
+                setError("");
               }}
             >
               Recorded examples
             </button>
             <button
               aria-pressed={mode === "live"}
-              disabled={!config.live_available}
+              disabled={availability.live_status !== "available" || busy}
               title={
-                !config.live_available
-                  ? "Configure OPENAI_API_KEY on the server to enable live AI"
-                  : undefined
+                availability.live_status === "missing_credentials"
+                  ? `Configure ${config.credential_name} on the server to enable live AI`
+                  : availability.live_status === "budget_exhausted"
+                    ? "Daily live capacity is exhausted. Recorded examples remain available."
+                    : undefined
               }
               onClick={() => {
                 setMode("live");
@@ -105,8 +114,12 @@ export function Ask({
               }}
             >
               Live AI{" "}
-              {!config.live_available && (
-                <span className="tiny">Not configured</span>
+              {availability.live_status !== "available" && (
+                <span className="tiny">
+                  {availability.live_status === "budget_exhausted"
+                    ? "Daily limit reached"
+                    : "Not configured"}
+                </span>
               )}
             </button>
           </div>
@@ -176,7 +189,30 @@ export function Ask({
             ? "Choose an example to explore the full answer-and-evidence flow."
             : "Answers use your indexed documents. Live calls consume API credits."}
         </p>
-        {error && <Notice error>{error}</Notice>}
+        {error && (
+          <Notice error>
+            {error}
+            {mode === "live" && (
+              <button
+                className="text-button"
+                onClick={() => {
+                  setMode("recorded");
+                  setQuestion(config.examples[0].question);
+                  setError("");
+                  setAnswer(null);
+                }}
+              >
+                Try recorded examples
+              </button>
+            )}
+          </Notice>
+        )}
+        {availability.live_status === "budget_exhausted" && !error && (
+          <Notice>
+            Daily live capacity is exhausted. Recorded examples remain available
+            without API calls.
+          </Notice>
+        )}
         {saved && (
           <Notice>
             <span className="saved">

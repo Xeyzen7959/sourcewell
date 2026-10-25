@@ -1,5 +1,5 @@
 {
-  "version": "0.1-draft",
+  "version": "0.2-draft",
   "review_status": "requires_human_review",
   "provenance": "AI-drafted fictional cases. Not human-labeled ground truth. Review before making quality claims.",
   "cases": [
@@ -584,17 +584,18 @@
       "question": "Can I cancel, receive an automatic refund, and still access my files?",
       "split": "development",
       "category": "multi_document",
-      "expected_status": "answered",
+      "expected_status": "conflicting_evidence",
       "relevant_documents": [
         "cancellation",
-        "refunds"
+        "refunds",
+        "legacy-retention"
       ],
-      "expected_behavior": "Explain that cancellation does not automatically refund; first-payment eligibility needs checking; explain read-only retention conflict if mentioned.",
+      "expected_behavior": "Explain that cancellation does not automatically create a refund; first-payment eligibility depends on timing. Surface the conflicting 30- and 60-day retention policies and ask a specialist to clarify continued access.",
       "review_status": "requires_human_review"
     },
     {
       "id": "q050",
-      "question": "What should I do if E-207 appears on a Starter upload?",
+      "question": "How do I fix E-207 on Starter, and what is my total storage allowance?",
       "split": "development",
       "category": "multi_document",
       "expected_status": "answered",
@@ -602,7 +603,7 @@
         "error-e207",
         "file-limits"
       ],
-      "expected_behavior": "Explain the 25 MB Starter file limit and suggest compression or splitting.",
+      "expected_behavior": "Explain the 25 MB file limit, compression or splitting, and the separate 10 GB Starter workspace storage allowance.",
       "review_status": "requires_human_review"
     },
     {
@@ -612,7 +613,6 @@
       "category": "multi_document",
       "expected_status": "answered",
       "relevant_documents": [
-        "roles",
         "exports",
         "deletion"
       ],

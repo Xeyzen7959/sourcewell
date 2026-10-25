@@ -54,6 +54,8 @@ def settings(tmp_path):
         admin_token="test-admin-only",
         requests_per_minute=1000,
         openai_api_key="",
+        ai_provider="openai",
+        ai_gateway_api_key="",
         _env_file=None,
     )
 

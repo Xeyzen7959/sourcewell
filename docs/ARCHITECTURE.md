@@ -46,10 +46,24 @@ Public mode exposes only seeded documents and disables document administration e
 
 This is not multi-tenant authentication. A stolen session cookie is a bearer credential. In production, use account authentication, retention controls, HTTPS, secure cookies, and explicit administrator roles. The current inbox records local drafts and never sends external messages.
 
+Public mode now requires secure cookies, uses a distinct `public:` owner namespace, and never serializes owner/session tokens into ticket responses. Expired public records are rejected immediately, then removed by startup/hourly cleanup. Local histories and the persistent provider reservation ledger are preserved. A fixed HTTPS PUBLIC_ORIGIN handles origin checks behind an internal HTTP reverse proxy.
+
 ## Keep provider spending visible
 
 Every operation reserves a slot atomically in SQLite before making a provider call. Failures count too. Timeouts, output limits, upload/chunk bounds, and no automatic retries constrain amplification. Optional token prices are estimates; a call-count cap is not a dollar cap. In-process IP limits are suitable only for a single process behind a correctly trusted proxy.
 
+A bounded semaphore rejects excess concurrent live operations; it does not create an unbounded waiting queue. Recorded answers stay available when live slots or daily capacity are exhausted. An ASGI middleware bounds both fixed-length and chunked bodies before JSON or multipart parsing. The client offers an explicit switch to recorded mode after a live failure; it never silently substitutes a fixture.
+
+## Provider connection remains explicit
+
+`AI_PROVIDER=openai` uses a direct OpenAI server key. `AI_PROVIDER=vercel` uses the same SDK against the fixed Gateway base URL and verified provider/model slugs. A Gateway key authenticates a local or external host to the user's Vercel account; it is not the same credential as automatic deployment OIDC. No credentials, routes, or budgets in Velosync are modified. Both paths share the same local operation reservations and request bounds.
+
 ## Evaluation provenance matters
 
 The evaluator records dataset SHA-256, source hashes, settings, model identifiers, timestamps, errors, and raw case outcomes. Dataset annotations are AI-drafted, not verified ground truth. Deterministic tests use a deliberately crude fake embedder and cannot establish real retrieval quality. See the evaluation protocol for denominator definitions and manual answer-quality grading.
+
+Human corrections and grades are append-only records tied to the source/dataset or exact evaluation run. They persist under DATA_DIR and are deliberately exported to a versioned JSON artifact. Human attestation is an explicit local-administrator action. Changes invalidate old annotations or results instead of inheriting their credibility. SDK MockTransport tests validate actual request serialization, provider routing, structured parsing, and usage accounting, without claiming real account/model success.
+
+## Hosting preparation
+
+The Docker entry point handles mounted-directory ownership, drops root before serving, and runs one worker. A Render Blueprint proposes one paid service with a persistent disk; its official schema is checked locally and its image startup is checked in CI. No deployment is performed by the build workflow. Source updates and persistent-data rollbacks are distinct operations; see DEPLOYMENT.md for the approval boundary and backup procedure.

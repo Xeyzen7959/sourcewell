@@ -26,17 +26,21 @@ class Provider:
 
     @property
     def available(self):
-        return bool(self.settings.openai_api_key.get_secret_value())
+        return bool(self.settings.provider_key.get_secret_value())
 
     @property
     def client(self):
         if not self.available:
             raise HTTPException(
-                503, "Live mode requires OPENAI_API_KEY on the server. Recorded examples still work."
+                503,
+                f"Live mode requires {self.settings.credential_name} on the server. Recorded examples still work.",
             )
         if self._client is None:
             self._client = OpenAI(
-                api_key=self.settings.openai_api_key.get_secret_value(), timeout=35, max_retries=0
+                api_key=self.settings.provider_key.get_secret_value(),
+                timeout=35,
+                max_retries=0,
+                base_url="https://ai-gateway.vercel.sh/v1" if self.settings.ai_provider == "vercel" else None,
             )
         return self._client
 
@@ -58,24 +62,40 @@ class Provider:
         self.store.record_usage(call_id, input_tokens, output_tokens, cost)
         if not hasattr(self.local, "calls"):
             self.start_usage()
+        reported = dict(
+            call_id=call_id,
+            usage_known=True,
+            kind=kind,
+            model=model,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            estimated_cost_usd=cost,
+        )
+        self.local.calls = [reported if item["call_id"] == call_id else item for item in self.local.calls]
+
+    def _begin(self, kind, model):
+        call_id = self.store.reserve_call(kind, model, self.settings.daily_provider_call_limit)
+        if not hasattr(self.local, "calls"):
+            self.start_usage()
         self.local.calls.append(
             dict(
+                call_id=call_id,
                 kind=kind,
                 model=model,
-                input_tokens=input_tokens,
-                output_tokens=output_tokens,
-                estimated_cost_usd=cost,
+                input_tokens=0,
+                output_tokens=0,
+                usage_known=False,
+                estimated_cost_usd=None,
             )
         )
+        return call_id
 
     def usage(self):
         return getattr(self.local, "calls", [])
 
     def embed(self, texts):
         client = self.client
-        call_id = self.store.reserve_call(
-            "embedding", self.settings.embedding_model, self.settings.daily_provider_call_limit
-        )
+        call_id = self._begin("embedding", self.settings.embedding_model)
         try:
             result = client.embeddings.create(model=self.settings.embedding_model, input=texts)
         except APIError as exc:
@@ -87,9 +107,7 @@ class Provider:
 
     def _parse(self, instructions, payload, schema):
         client = self.client
-        call_id = self.store.reserve_call(
-            "generation", self.settings.generation_model, self.settings.daily_provider_call_limit
-        )
+        call_id = self._begin("generation", self.settings.generation_model)
         try:
             result = client.responses.parse(
                 model=self.settings.generation_model,
@@ -161,7 +179,21 @@ def check_answer(provider, question, chunks):
             "support_details": [],
         }
     ids_valid = validate_citations(draft, chunks)
-    verdict = provider.support(draft.claims, chunks) if ids_valid else None
+    diagnostics = dict(
+        citation_reference_count=sum(len(c.citation_ids) for c in draft.claims),
+        valid_citation_reference_count=sum(
+            chunk_id in {c["id"] for c in chunks} for claim in draft.claims for chunk_id in claim.citation_ids
+        ),
+    )
+    try:
+        verdict = provider.support(draft.claims, chunks) if ids_valid else None
+    except HTTPException as exc:
+        exc.evaluation_diagnostics = {
+            **diagnostics,
+            "citation_validation": "valid" if ids_valid else "invalid",
+            "support_assessment": "assessment_error",
+        }
+        raise
     expected_indices = set(range(len(draft.claims)))
     support_valid = (
         bool(verdict)
@@ -174,6 +206,7 @@ def check_answer(provider, question, chunks):
         citation_validation="valid" if ids_valid else "invalid",
         support_assessment="model_supported" if support_valid else "not_supported_or_unchecked",
         support_details=verdict.model_dump()["verdicts"] if verdict else [],
+        **diagnostics,
     )
     if not ids_valid or not support_valid:
         payload.update(

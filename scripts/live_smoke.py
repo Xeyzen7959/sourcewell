@@ -1,28 +1,51 @@
-"""Explicit opt-in live smoke check. Uses paid provider calls; requires OPENAI_API_KEY."""
+"""One bounded, paid, seed-only HTTP smoke flow for both retrieval modes and human handoff."""
 
-from backend.config import ROOT, Settings
-from backend.provider import Provider, check_answer
-from backend.retrieval import Retriever
+from pathlib import Path
+from tempfile import TemporaryDirectory
+
+from fastapi.testclient import TestClient
+
+from backend.config import Settings
+from backend.main import create_app
+from backend.provider import Provider
 from backend.store import Store
 
 
 def main():
     settings = Settings()
-    provider = Provider(settings, Store(settings.data_dir))
-    if not provider.available:
-        raise SystemExit("BLOCKED: OPENAI_API_KEY is not configured. No live verification was performed.")
-    retriever = Retriever(provider.store, settings, provider)
-    for path in sorted((ROOT / "fixtures/documents").glob("*.md")):
-        retriever.ingest(path.name, path.read_bytes(), doc_id=path.stem, seeded=True)
-        retriever.index_document(path.stem)
-    provider.start_usage()
-    sources = retriever.search("How do I fix error E-207?", "hybrid")
-    result = check_answer(provider, "How do I fix error E-207?", sources)
-    assert sources, "No retrieval evidence"
-    assert result["citation_validation"] == "valid", "Citation validation did not pass"
-    assert result["status"] == "answered", "Expected an answer; inspect live output"
-    print("Live smoke passed: ingestion, embeddings, hybrid retrieval, generation, and citation assessment.")
-    print("This single smoke check is not a benchmark or a guarantee of answer quality.")
+    if not settings.provider_key.get_secret_value():
+        raise SystemExit(
+            f"BLOCKED: {settings.credential_name} is not configured. No live verification performed."
+        )
+    budget_store = Store(settings.data_dir)
+    with TemporaryDirectory(prefix="sourcewell-live-smoke-") as directory:
+        isolated = settings.model_copy(
+            update={"data_dir": Path(directory), "app_mode": "public", "cookie_secure": True}
+        )
+        app = create_app(isolated, lambda config, _: Provider(config, budget_store))
+        with TestClient(app, base_url="https://testserver") as client:
+            for doc in app.state.store.documents(public=True):
+                app.state.retriever.index_document(doc["id"])
+            for mode in ["semantic", "hybrid"]:
+                response = client.post(
+                    "/api/ask",
+                    json={"question": "How do I fix error E-207?", "mode": "live", "search_mode": mode},
+                )
+                assert response.status_code == 200, f"{mode}: HTTP {response.status_code}"
+                answer = response.json()
+                assert answer["mode"] == "live" and answer["citation_validation"] == "valid"
+                assert answer["status"] == "answered", f"{mode}: expected a grounded answer"
+                result = client.post(
+                    "/api/handoffs",
+                    json={"answer_id": answer["id"], "reason": "Live smoke specialist review"},
+                )
+                assert result.status_code == 200
+                ticket = client.get(f"/api/tickets/{result.json()['id']}")
+                assert ticket.status_code == 200 and ticket.json()["answer"]["sources"] == answer["sources"]
+                print(
+                    f"{mode}: real retrieval, generation, citation assessment, and persisted handoff passed."
+                )
+    print("Live smoke passed. This is not a quality benchmark or prompt-injection robustness evaluation.")
 
 
 if __name__ == "__main__":
