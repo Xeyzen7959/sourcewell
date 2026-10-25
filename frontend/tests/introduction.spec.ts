@@ -3,7 +3,8 @@ import { expect, test } from "@playwright/test";
 test("introduction offers a usable demo, actual screenshot, and honest pending results", async ({
   page,
 }, testInfo) => {
-  await page.goto("/");
+  // Public test data stays unreviewed when the local review-form test runs.
+  await page.goto("http://127.0.0.1:8002/");
   await expect(
     page.getByRole("heading", { name: /An answer is better/ }),
   ).toBeVisible();
