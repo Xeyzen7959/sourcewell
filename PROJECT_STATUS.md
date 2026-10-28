@@ -15,10 +15,17 @@ Deliver a results-focused portfolio application in the existing Xeyzen7959/sourc
 - Seed-only public mode, disabled administration, public/local history separation, bounded request bodies and outputs, atomic daily operation cap, rate/concurrency limits, explicit recorded fallback, HTTPS cookies, and public record expiry/cleanup.
 - Prepared Render Blueprint, container startup permissions, readiness checks, backup/rollback instructions, and CI container smoke checks.
 
+## Website refinement — 2026-10-28
+
+- User-requested light glassmorphism throughout the introduction and workspace: static mint/sage depth, progressive backdrop blur, opaque fallback, and readable control wells.
+- Concrete product copy, direct recorded-workflow entry, resilient screenshot fallback, distinct evaluation loading/error states, and route scroll/focus restoration.
+- Short proof/answer entrances and button feedback respect reduced motion. No new dependencies or backend/API changes.
+- Actual senior/worker responsibilities, acceptance criteria, prototype review, repair budget, and evidence are recorded in `docs/WEBSITE_BRAIN_REVIEW.md`.
+
 ## Verification
 
 - 46 backend tests pass, including mocked SDK transport, review provenance, stale artifacts, failure denominators, isolation, retention, limits, and container entry-point behavior.
-- 14 Playwright checks pass across desktop and mobile. They exercise recorded workflows and simulated reviewer input in temporary test data; they do not constitute human dataset review or real-provider verification.
+- 22 Playwright checks pass across desktop and mobile. They exercise recorded workflows and simulated reviewer input in temporary test data; they do not constitute human dataset review or real-provider verification.
 - Frontend type check, lint, and production build pass. Python lint passes.
 - Screenshots are generated from the working application. Introduction captures use fresh test data with zero reviewed annotations.
 - Render configuration validates against the official Blueprint JSON schema. Docker is unavailable on the local host; GitHub Actions builds and boots the actual image. Consult the delivery message or the current Actions run for its observed result.

@@ -3,7 +3,6 @@ import {
   ArrowRight,
   ArrowUpRight,
   BookOpen,
-  Check,
   FileSearch,
   MessageSquare,
 } from "lucide-react";
@@ -23,6 +22,7 @@ export function Introduction({
   const [data, setData] = useState<Evaluation | null>(null);
   const [documents, setDocuments] = useState<number | null>(null);
   const [error, setError] = useState("");
+  const [previewFailed, setPreviewFailed] = useState(false);
   useEffect(() => {
     let active = true;
     Promise.all([api<Evaluation>("/evaluation"), api<Document[]>("/documents")])
@@ -84,13 +84,14 @@ export function Introduction({
               Evidence-first support
             </span>
             <h1>
-              An answer is better
+              AI support answers.
               <br />
-              when you can <em>check it.</em>
+              <em>Evidence attached.</em>
             </h1>
             <p>
-              Ask a support question, inspect its sources, and hand uncertainty
-              to a human—with the context intact.
+              Sourcewell turns support documents into answers you can inspect.
+              Open a citation, spot missing evidence, and save a handoff for
+              human review.
             </p>
             <div className="intro-actions">
               <button className="button primary" onClick={onDemo}>
@@ -99,80 +100,104 @@ export function Introduction({
               <button
                 className="text-button"
                 onClick={() =>
-                  document
-                    .getElementById("measured-results")
-                    ?.scrollIntoView({
-                      behavior: window.matchMedia(
-                        "(prefers-reduced-motion: reduce)",
-                      ).matches
-                        ? "instant"
-                        : "smooth",
-                    })
+                  document.getElementById("measured-results")?.scrollIntoView({
+                    behavior: window.matchMedia(
+                      "(prefers-reduced-motion: reduce)",
+                    ).matches
+                      ? "instant"
+                      : "smooth",
+                  })
                 }
               >
                 Inspect the results <ArrowRight size={15} />
               </button>
             </div>
+            <div className="intro-availability">
+              <span className="dot" />
+              Recorded demo ready. No API key needed.
+            </div>
             <span className="intro-disclosure">
-              Fictional company documents. Clearly labeled recorded examples.{" "}
+              Fictional documents.{" "}
               {config.live_status === "available"
-                ? "Live AI is configured; availability depends on indexing and remaining capacity."
+                ? "Live AI is configured; indexing and capacity still apply."
                 : config.live_status === "budget_exhausted"
-                  ? "Daily live capacity is exhausted; recorded examples are available."
-                  : "Live AI is awaiting server credentials."}
+                  ? "Live AI has reached its daily limit."
+                  : "Live AI awaits server credentials."}
             </span>
           </div>
-          <aside className="intro-proof">
-            <span className="eyebrow">Follow the evidence</span>
-            <BookOpen size={28} />
-            <h2>
-              A source for the answer.
-              <br />A next step for the unknown.
-            </h2>
-            <ul>
-              <li>
-                <Check size={15} />
-                Exact source passages
-              </li>
-              <li>
-                <Check size={15} />
-                Explicit missing or conflicting evidence
-              </li>
-              <li>
-                <Check size={15} />
-                Session-isolated specialist handoff
-              </li>
-            </ul>
-            <span className="tag">Interactive portfolio project</span>
+          <aside
+            className="intro-proof"
+            aria-label="A recorded example you can inspect"
+          >
+            <div className="proof-heading">
+              <span className="eyebrow">Inside the demo</span>
+              <span className="tag">Recorded example</span>
+            </div>
+            <p className="proof-question">
+              “Can I get a refund for my first subscription?”
+            </p>
+            <div className="proof-answer">
+              <span className="proof-label">Answer → evidence → handoff</span>
+              <p>
+                Follow an answer back to its source. Keep the context when a
+                human needs to take over.
+              </p>
+              <button className="text-button" onClick={onDemo}>
+                Open the working example <ArrowUpRight size={16} />
+              </button>
+            </div>
+            <div className="proof-footer">
+              <BookOpen size={15} /> Real interface. Recorded answer.
+              Inspectable sources.
+            </div>
           </aside>
         </section>
         <figure className="intro-preview">
           <div className="preview-toolbar">
-            <span />
-            <span />
-            <span />
-            <p>Sourcewell / Recorded example workspace</p>
+            <span className="preview-live-dot" />
+            <p>The working product</p>
+            <button className="text-button" onClick={onDemo}>
+              Explore workspace <ArrowUpRight size={14} />
+            </button>
           </div>
-          <img
-            src="/preview/workspace.png"
-            alt="Actual Sourcewell workspace with a recorded support question, document citations, and specialist handoff"
-            width="1440"
-            height="1006"
-            fetchPriority="high"
-          />
+          {previewFailed ? (
+            <div className="preview-fallback">
+              <BookOpen size={30} />
+              <h2>The workspace is still one click away.</h2>
+              <p>
+                The screenshot could not load. You can still open the
+                interactive demo.
+              </p>
+              <button className="button primary" onClick={onDemo}>
+                Open the demo <ArrowRight size={16} />
+              </button>
+            </div>
+          ) : (
+            <img
+              src="/preview/workspace.png"
+              alt="Actual Sourcewell workspace with a recorded support question, document citations, and specialist handoff"
+              width="1440"
+              height="1006"
+              fetchPriority="high"
+              onError={() => setPreviewFailed(true)}
+            />
+          )}
           <figcaption>
-            Screenshot of the actual application. Open the demo to explore it
-            yourself.
+            <span>
+              Actual application screenshot · fictional Cedarline Cloud
+              workspace
+            </span>
+            <span>Try it. Inspect it. Follow the sources.</span>
           </figcaption>
         </figure>
         <section className="intro-workflow">
           <div>
             <FileSearch size={22} />
             <span className="eyebrow">01 / Find</span>
-            <h3>Bring the right context.</h3>
+            <h3>Ask a support question.</h3>
             <p>
-              Live retrieval combines exact keyword matching with semantic
-              search over a bounded document library.
+              Explore recorded answers now. Configured live mode searches
+              documents by meaning and exact keywords.
             </p>
           </div>
           <div>
@@ -180,8 +205,8 @@ export function Introduction({
             <span className="eyebrow">02 / Inspect</span>
             <h3>Open the evidence.</h3>
             <p>
-              See the exact passage behind a citation. Reference checks and
-              model support assessments have different limits.
+              Read the saved passage behind each citation. Check the answer
+              against the document yourself.
             </p>
           </div>
           <div>
@@ -189,8 +214,8 @@ export function Introduction({
             <span className="eyebrow">03 / Review</span>
             <h3>Make uncertainty useful.</h3>
             <p>
-              Save a handoff with its question, answer attempt, and source
-              snapshots. No external messages are sent.
+              Save the question, draft answer, and sources in a session inbox.
+              No external message is sent.
             </p>
           </div>
         </section>
@@ -198,18 +223,21 @@ export function Introduction({
           <div className="section-heading">
             <div>
               <span className="eyebrow">Results, with provenance</span>
-              <h2>
-                Measured when measured.
-                <br />
-                <em>Pending when pending.</em>
-              </h2>
+              <h2>What has been tested?</h2>
             </div>
             <button className="button secondary" onClick={onEvaluation}>
               Open evaluation lab <ArrowUpRight size={15} />
             </button>
           </div>
-          {error && <Notice error>{error}</Notice>}
-          {results ? (
+          {error && (
+            <Notice error>
+              Evidence could not load: {error} Refresh to retry, or open the
+              recorded demo.
+            </Notice>
+          )}
+          {!data && !error ? (
+            <Notice>Loading evaluation evidence…</Notice>
+          ) : error ? null : results ? (
             <>
               <span className="tag amber">
                 {preliminary
@@ -256,9 +284,9 @@ export function Introduction({
                   : "No live quality scores are available yet."}
               </h3>
               <p>
-                Recorded workflows are ready to explore. Live benchmarking still
-                needs credentials and reviewed annotations. No accuracy or
-                savings claims are inferred from the interface.
+                The recorded demo works today. Live benchmarking needs
+                credentials and human-reviewed annotations before its results
+                can support quality claims.
               </p>
             </div>
           )}

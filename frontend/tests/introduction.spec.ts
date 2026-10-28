@@ -6,7 +6,7 @@ test("introduction offers a usable demo, actual screenshot, and honest pending r
   // Public test data stays unreviewed when the local review-form test runs.
   await page.goto("http://127.0.0.1:8002/");
   await expect(
-    page.getByRole("heading", { name: /An answer is better/ }),
+    page.getByRole("heading", { name: /AI support answers/ }),
   ).toBeVisible();
   const image = page.getByAltText(/Actual Sourcewell workspace/);
   await expect(image).toBeVisible();
@@ -32,6 +32,8 @@ test("introduction offers a usable demo, actual screenshot, and honest pending r
       path: `../docs/screenshots/introduction-${testInfo.project.name}.png`,
       fullPage: true,
     });
+    if (testInfo.project.name === "desktop")
+      await page.screenshot({ path: "../docs/screenshots/glass-desktop.png" });
   }
   await page
     .getByRole("button", { name: "Try the demo", exact: true })
@@ -157,4 +159,178 @@ test("exhausted budget offers a deliberate recorded-mode path", async ({
   await expect(
     page.getByText("Recorded example", { exact: true }),
   ).toBeVisible();
+});
+
+test("bottom demo action restores scroll and keyboard focus, including hash navigation", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const button = page
+    .locator(".intro-end")
+    .getByRole("button", { name: "Try the demo" });
+  await button.scrollIntoViewIfNeeded();
+  await button.focus();
+  await page.keyboard.press("Enter");
+  await expect(
+    page.getByRole("heading", { name: /Good answers start/ }),
+  ).toBeVisible();
+  await expect(page.locator("#main-content")).toBeFocused();
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+  await page.evaluate(() => {
+    window.location.hash = "intro";
+  });
+  await expect(page.locator("#intro-main")).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(page.locator(".intro-actions .primary")).toBeFocused();
+});
+
+test("narrow reduced-motion intro preserves image fallback, navigation and evidence", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 800 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.route("**/preview/workspace.png", (route) => route.abort());
+  await page.goto("/");
+  await expect(
+    page.getByRole("heading", {
+      name: "The workspace is still one click away.",
+    }),
+  ).toBeVisible();
+  expect(
+    await page
+      .locator(".intro-proof")
+      .evaluate((node) => getComputedStyle(node).animationName),
+  ).toBe("none");
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page
+    .locator(".intro-actions")
+    .getByRole("button", { name: "Inspect the results" })
+    .click();
+  await expect(
+    page.getByText("Evaluation pending", { exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Open the demo", exact: true })
+    .click();
+  await expect(page.locator("#main-content")).toBeFocused();
+  const menu = page.getByRole("button", {
+    name: "Open navigation",
+    exact: true,
+  });
+  await menu.click();
+  await page.getByRole("link", { name: "Knowledge", exact: true }).click();
+  await expect(page.getByRole("heading", { name: /Knowledge/ })).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+});
+
+test("evaluation loading and error states never imply a measured result", async ({
+  page,
+}) => {
+  let release: () => void = () => {};
+  const waiting = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/api/evaluation", async (route) => {
+    await waiting;
+    await route.fulfill({
+      status: 503,
+      json: { detail: "Evidence temporarily unavailable" },
+    });
+  });
+  await page.goto("/");
+  await expect(page.getByText("Loading evaluation evidence…")).toBeVisible();
+  await expect(
+    page.getByText("Evaluation pending", { exact: true }),
+  ).toHaveCount(0);
+  release();
+  await expect(page.getByText(/Evidence could not load/)).toBeVisible();
+  await expect(
+    page.getByText("Evaluation pending", { exact: true }),
+  ).toHaveCount(0);
+  await page
+    .locator(".intro-actions")
+    .getByRole("button", { name: "Try the demo" })
+    .click();
+  await page
+    .getByRole("button", { name: "Ask Sourcewell", exact: true })
+    .click();
+  await expect(
+    page.getByText("Recorded example", { exact: true }),
+  ).toBeVisible();
+});
+
+test("glass enhancement and short motion preserve the recorded workflow", async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.goto("/");
+  await expect(page.locator(".intro-proof")).toBeVisible();
+  expect(
+    await page
+      .locator(".intro-proof")
+      .evaluate((node) => getComputedStyle(node).animationName),
+  ).toBe("proof-arrive");
+  const supportsBlur = await page.evaluate(() =>
+    CSS.supports("backdrop-filter", "blur(16px)"),
+  );
+  if (supportsBlur)
+    expect(
+      await page
+        .locator(".intro-proof")
+        .evaluate((node) => getComputedStyle(node).backdropFilter),
+    ).toBe("blur(16px)");
+  await page
+    .locator(".intro-actions")
+    .getByRole("button", { name: "Try the demo" })
+    .click();
+  await page
+    .getByRole("button", { name: "Ask Sourcewell", exact: true })
+    .click();
+  await expect(page.locator(".answer-card")).toBeVisible();
+  expect(
+    await page
+      .locator(".answer-card")
+      .evaluate((node) => getComputedStyle(node).animationName),
+  ).toBe("answer-arrive");
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  expect(
+    await page
+      .locator(".answer-card")
+      .evaluate((node) => getComputedStyle(node).animationName),
+  ).toBe("none");
+  await page.evaluate(() => {
+    location.hash = "intro";
+  });
+  await expect(page.locator(".intro-proof")).toBeVisible();
+  expect(
+    await page
+      .locator(".intro-proof")
+      .evaluate((node) => getComputedStyle(node).animationName),
+  ).toBe("none");
+  // Simulate an engine without the enhancement by removing only support guards.
+  await page.evaluate(() => {
+    for (const sheet of document.styleSheets) {
+      for (let i = sheet.cssRules.length - 1; i >= 0; i--) {
+        if (sheet.cssRules[i] instanceof CSSSupportsRule) sheet.deleteRule(i);
+      }
+    }
+  });
+  expect(
+    await page
+      .locator(".intro-proof")
+      .evaluate((node) => getComputedStyle(node).backgroundColor),
+  ).toBe("rgb(244, 248, 244)");
+  expect(
+    await page
+      .locator(".intro-proof")
+      .evaluate((node) => getComputedStyle(node).backdropFilter),
+  ).toBe("none");
 });

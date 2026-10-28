@@ -13,7 +13,10 @@
   line-height: 1.55;
   --ink: #183d36;
   --teal: #206758;
-  --muted: #6c7b74;
+  --muted: #56685f;
+  --glass: #f4f8f4;
+  --glass-border: #c8d8ce;
+  --glass-shadow: 0 12px 38px #244b3b0d;
   --line: #dfe5dd;
   --paper: #fff;
   --wash: #eef2e9;
@@ -23,6 +26,10 @@
 }
 body {
   margin: 0;
+  background:
+    radial-gradient(ellipse at 88% 5%, #b3d8c9a6 0, transparent 42%),
+    radial-gradient(ellipse at 5% 55%, #d2dec09c 0, transparent 45%), #edf3ee;
+  background-attachment: fixed;
 }
 button,
 input,
@@ -1882,5 +1889,93 @@ dialog p {
     animation: none !important;
     transition: none !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* Opaque surfaces are the fallback; blur is progressive enhancement. */
+.sidebar,
+.topbar,
+.question-box,
+.answer-card,
+.document-table,
+.ticket-list,
+.comparison-card,
+.evaluation-intro,
+.intro-proof,
+.intro-preview,
+.intro-pending,
+.intro-result-grid article {
+  background: var(--glass);
+  border-color: var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+.sidebar {
+  border-right-color: var(--glass-border);
+}
+.topbar {
+  border-bottom-color: var(--glass-border);
+}
+.question-box,
+.answer-card,
+.intro-proof,
+.intro-preview {
+  border-radius: 16px;
+}
+.example-card {
+  background: #f6faf6c9;
+  border-color: var(--glass-border);
+}
+.document-row,
+.ticket-row {
+  background: transparent;
+}
+.question-box > select,
+.question-box textarea {
+  background: #fffffff0;
+}
+@supports (
+  (backdrop-filter: blur(16px)) or (-webkit-backdrop-filter: blur(16px))
+) {
+  :root {
+    --glass: #ffffffa8;
+    --glass-border: #ffffffd4;
+  }
+  .sidebar,
+  .topbar,
+  .question-box,
+  .answer-card,
+  .document-table,
+  .ticket-list,
+  .comparison-card,
+  .evaluation-intro,
+  .intro-proof,
+  .intro-preview,
+  .intro-pending,
+  .intro-result-grid article {
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .answer-card {
+    animation: answer-arrive 260ms ease-out;
+  }
+  .button:hover:not(:disabled),
+  .ask-submit:hover:not(:disabled) {
+    transform: translateY(-1px);
+  }
+  .button:active:not(:disabled),
+  .ask-submit:active:not(:disabled) {
+    transform: translateY(0);
+  }
+  @keyframes answer-arrive {
+    from {
+      opacity: 0.65;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 }

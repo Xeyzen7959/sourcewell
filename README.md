@@ -12,7 +12,7 @@ React + TypeScript · FastAPI · Chroma · BM25 · Reciprocal Rank Fusion
 
 </div>
 
-![Sourcewell introduction with a direct demo action, actual application screenshot, and evaluation provenance](docs/screenshots/introduction-desktop.png)
+![Sourcewell glass interface with a direct demo action and evidence workflow](docs/screenshots/glass-desktop.png)
 
 Sourcewell is a working portfolio application for answering support questions from company documentation. It connects document ingestion, hybrid retrieval, structured generation, inspectable citations, and human handoff in one small application.
 
@@ -20,6 +20,7 @@ The sample company, **Cedarline Cloud**, and all 24 seeded documents are fiction
 
 ## What you can explore
 
+- **Interface:** light glass surfaces, forest-green text, short purposeful motion, reduced-motion support, and solid-surface fallbacks. [Design and verification record](docs/WEBSITE_BRAIN_REVIEW.md).
 - **Introduction:** try the product directly, inspect the actual workspace screenshot, and see artifact-backed results or an explicit pending state. No video is required. The workspace remains directly accessible at `/#ask`.
 - **Ask:** select a recorded scenario, or use live AI after server configuration. Open the exact passages behind each citation.
 - **Knowledge:** search and preview source documents. Authorized local administrators can upload, replace, index, and delete their own documents.
@@ -175,7 +176,7 @@ pnpm exec playwright install chromium
 pnpm test:e2e
 ```
 
-Playwright runs the built app against temporary local and public FastAPI/SQLite servers on ports 8001 and 8002, without a provider key. It checks desktop and mobile introduction/demo navigation, answer/citation/handoff flows, persisted ticket edits, human-review/export controls, public restrictions, and budget-exhausted states. Test-entered reviewer records are temporary fixtures, never real dataset validation. On Linux, install browser dependencies with `pnpm exec playwright install --with-deps chromium`.
+Playwright runs the built app against temporary local and public FastAPI/SQLite servers on ports 8001 and 8002, without a provider key. It checks desktop and mobile introduction/demo navigation, narrow 320px layouts, keyboard route focus, reduced motion, glass/motion enhancement, screenshot fallback, evaluation loading/errors, answer/citation/handoff flows, persisted ticket edits, human-review/export controls, public restrictions, and budget-exhausted states. Test-entered reviewer records are temporary fixtures, never real dataset validation. On Linux, install browser dependencies with `pnpm exec playwright install --with-deps chromium`.
 
 To refresh application screenshots deliberately: `UPDATE_SCREENSHOTS=1 pnpm test:e2e`. GitHub Actions runs deterministic checks without paid calls or secrets, then builds and boots the real Docker image with a persistent test volume. Container checks verify non-root serving, readiness, secure-cookie flags, static assets, and recorded answers.
 

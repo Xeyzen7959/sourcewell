@@ -55,6 +55,13 @@ export default function App() {
       window.removeEventListener("hashchange", navigate);
     };
   }, []);
+  useEffect(() => {
+    if (!config) return;
+    window.scrollTo({ top: 0, behavior: "instant" });
+    document
+      .getElementById(page === "intro" ? "intro-main" : "main-content")
+      ?.focus({ preventScroll: true });
+  }, [page, config]);
   function go(next: Page) {
     window.location.hash = next;
     setPage(next);
